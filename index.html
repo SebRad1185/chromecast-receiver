@@ -30,6 +30,7 @@
 
     /* 3 . when a message arrives → update UI */
     bus.onMessage = ({data}) => {
+      console.log('RX ❤', data); 
       /* data is already a JS object because we picked MessageType.JSON */
       document.getElementById('screen-title'  ).textContent = data.title   || 'Workout Screen';
       document.getElementById('workout-content').textContent = data.content || '';
