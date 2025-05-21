@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Workout Receiver</title>
+  <style>
+    body { font-family: sans-serif; background: #1a1a1a; color: #fff; }
+    #screen-title { font-size: 2em; margin: 24px; }
+    #workout-content { margin: 40px auto; max-width: 600px; font-size: 1.2em; }
+  </style>
+  <script type="text/javascript" src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+</head>
+<body>
+  <div id="screen-title">Waiting for workout...</div>
+  <div id="workout-content"></div>
+  <script>
+    const context = cast.framework.CastReceiverContext.getInstance();
+    const namespace = 'urn:x-cast:workout.timer';
+
+    context.addCustomMessageListener(namespace, (event) => {
+      const data = event.data;
+      document.getElementById('screen-title').textContent = data.title || "Workout Screen";
+      document.getElementById('workout-content').innerHTML = data.content || "";
+    });
+
+    context.start();
+  </script>
+</body>
+</html>
