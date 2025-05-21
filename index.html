@@ -3,41 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <title>Workout Receiver</title>
-
   <style>
-    body            { font-family:sans-serif; background:#1a1a1a; color:#fff; text-align:center }
-    #screen-title   { font-size:2em; margin:24px }
-    #workout-content{ margin:40px auto; max-width:600px; font-size:1.2em }
+    body{font-family:sans-serif;background:#1a1a1a;color:#fff;text-align:center}
+    #screen-title{font-size:2em;margin:24px}
+    #workout-content{margin:40px auto;max-width:600px;font-size:1.2em}
   </style>
-
-  <!-- Cast Application Framework for receivers -->
   <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
 </head>
 <body>
   <div id="screen-title">Waiting for workout…</div>
   <div id="workout-content"></div>
 
-  <script>
-    const NAMESPACE = 'urn:x-cast:workout.timer';
+<script>
+  const NAMESPACE = 'urn:x-cast:workout.timer';
+  const context   = cast.framework.CastReceiverContext.getInstance();
 
-    /* 1 . receiver context */
-    const context = cast.framework.CastReceiverContext.getInstance();
+  /* TEXT bus (default) */
+  const bus = context.getCastMessageBus(NAMESPACE);
 
-    /* 2 . message bus that EXPECTS JSON */
-    const bus = context.getCastMessageBus(
-                    NAMESPACE,
-                    cast.framework.system.MessageType.JSON);
+  bus.onMessage = ({data}) => {
+      console.log('RX ❤', data);                 // see raw payload
+      const d = JSON.parse(data);                // convert to object
+      document.getElementById('screen-title').textContent   = d.title   || 'Workout Screen';
+      document.getElementById('workout-content').textContent = d.content || '';
+  };
 
-    /* 3 . when a message arrives → update UI */
-    bus.onMessage = ({data}) => {
-      console.log('RX ❤', data); 
-      /* data is already a JS object because we picked MessageType.JSON */
-      document.getElementById('screen-title'  ).textContent = data.title   || 'Workout Screen';
-      document.getElementById('workout-content').textContent = data.content || '';
-    };
-
-    /* 4 . start the receiver */
-    context.start();
-  </script>
+  context.start();
+</script>
 </body>
 </html>
