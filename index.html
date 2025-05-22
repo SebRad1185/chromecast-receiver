@@ -4,31 +4,80 @@
   <meta charset="UTF-8">
   <title>Workout Receiver</title>
   <style>
-    body{font-family:sans-serif;background:#1a1a1a;color:#fff;text-align:center}
-    #screen-title{font-size:2em;margin:24px}
-    #workout-content{margin:40px auto;max-width:600px;font-size:1.2em}
+    html,body{height:100%;margin:0;font-family:sans-serif;background:#1a1a1a;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+    #screen-title{font-size:4vw;margin:.6em 0}
+    #details{font-size:2.2vw;opacity:.8;margin:.3em 0}
+    #state{font-size:2.5vw;margin:.4em 0}
+    #barWrap{width:60vw;height:1.2vw;background:#444;border-radius:1vw;overflow:hidden;margin-top:2em}
+    #bar{width:0%;height:100%;background:#03DAC6;transition:width .3s linear}
   </style>
   <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
 </head>
 <body>
   <div id="screen-title">Waiting for workout…</div>
-  <div id="workout-content"></div>
+  <div id="details"></div>
+  <div id="state"></div>
+  <div id="barWrap"><div id="bar"></div></div>
 
-<script>
-  const NAMESPACE = 'urn:x-cast:workout.timer';
-  const context   = cast.framework.CastReceiverContext.getInstance();
+  <script>
+    // Namespace must match sender
+    const CHANNEL = 'urn:x-cast:workout.channel';
 
-  /* TEXT bus (default) */
-  const bus = context.getCastMessageBus(NAMESPACE);
+    const context = cast.framework.CastReceiverContext.getInstance();
+    context.setLoggerLevel(cast.framework.LoggerLevel.INFO);
 
-  bus.onMessage = ({data}) => {
-      console.log('RX ❤', data);                 // see raw payload
-      const d = JSON.parse(data);                // convert to object
-      document.getElementById('screen-title').textContent   = d.title   || 'Workout Screen';
-      document.getElementById('workout-content').textContent = d.content || '';
-  };
+    const bus = context.getCastMessageBus(
+      CHANNEL,
+      cast.framework.MessageType.JSON);
 
-  context.start();
-</script>
+    /* --- UI helpers --- */
+    function setTitle(t){document.getElementById('screen-title').textContent=t;}
+    function setDetails(t){document.getElementById('details').textContent=t;}
+    function setState(t){document.getElementById('state').textContent=t;}
+    function setProgress(pct){document.getElementById('bar').style.width=pct+'%';}
+
+    let duration=0,startTime=0,timerId=null;
+
+    function startLocalTimer(){
+      clearInterval(timerId);
+      if(duration<=0) return;
+      startTime=Date.now();
+      timerId=setInterval(()=>{
+        const pct=Math.min(100,((Date.now()-startTime)/1000)/duration*100);
+        setProgress(pct);
+        if(pct>=100) clearInterval(timerId);
+      },200);
+    }
+
+    bus.addEventListener(cast.framework.events.EventType.MESSAGE,({data})=>{
+      console.log('[Receiver] got',data);
+      switch(data.type){
+        case 'exercise':
+          const ex=data.payload||{};
+          setTitle(ex.name||'Exercise');
+          setDetails((ex.reps?ex.reps+' reps ':'')+(ex.duration?ex.duration+' s':''));
+          setState('Ready');
+          duration=ex.duration||0;
+          setProgress(0);
+          break;
+        case 'state':
+          if(data.payload==='start'){setState('Running…');startLocalTimer();}
+          else if(data.payload==='pause'){setState('Paused');clearInterval(timerId);}
+          else if(data.payload==='stop'){setState('Stopped');clearInterval(timerId);setProgress(0);}
+          break;
+        case 'progress':
+          setProgress(data.pct||0);
+          break;
+        case 'screen':
+          // optional: show which logical screen we are
+          document.title='Workout Screen '+data.screen;
+          break;
+        default:
+          console.log('[Receiver] unknown',data);
+      }
+    });
+
+    context.start();
+  </script>
 </body>
 </html>
