@@ -4,26 +4,72 @@
   <meta charset="UTF-8">
   <title>Workout Receiver</title>
   <style>
-    body { font-family: sans-serif; background: #111; color: #eee; text-align: center; }
-    #screen-title { margin: 40px; font-size: 2em; }
-    #workout-content { margin: 20px auto; max-width: 600px; font-size: 1.2em; }
+    body {
+      font-family: sans-serif;
+      background: #111;
+      color: #eee;
+      text-align: center;
+      padding: 20px;
+    }
+    #screen-title {
+      margin: 20px 0;
+      font-size: 2em;
+    }
+    #workout-content {
+      margin: 20px auto;
+      max-width: 600px;
+      font-size: 1.2em;
+    }
+    .exercise {
+      margin-bottom: 16px;
+    }
+    .exercise h2 {
+      margin: 0 0 8px;
+      font-size: 1.5em;
+    }
   </style>
+
+  <!-- 1) CAF v3 Receiver SDK -->
   <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
 </head>
 <body>
   <div id="screen-title">Waiting for workout…</div>
   <div id="workout-content"></div>
+
   <script>
-    // Grab the ReceiverContext singleton
+    // 2) Get the CAF ReceiverContext singleton
     const context = cast.framework.CastReceiverContext.getInstance();
 
-    // Optional: Set log level to DEBUG for more verbose logs
+    // 3) (Optional) More verbose logs in chrome://inspect → Remote Target
     context.setLoggerLevelValue(cast.framework.LoggerLevel.DEBUG);
 
-    // TODO: Add any custom message listeners or interceptors here
-    // Example: context.addCustomMessageListener('urn:x-cast:com.example.namespace', (event) => { ... });
+    // 4) Listen for custom messages on your namespace
+    const NAMESPACE = 'urn:x-cast:workout.channel';
+    context.addCustomMessageListener(NAMESPACE, (event) => {
+      const msg = event.data;
+      console.log('⚡ Receiver got message:', msg);
 
-    // Start the receiver to bind the WebSocket and message handlers
+      // If sender says to change the screen
+      if (msg.type === 'screen' && msg.screen) {
+        document.getElementById('screen-title').textContent = msg.screen;
+        document.getElementById('workout-content').innerHTML = '';
+      }
+
+      // If sender sends an exercise payload
+      else if (msg.type === 'exercise' && msg.payload) {
+        const { name, reps, duration } = msg.payload;
+        document.getElementById('workout-content').innerHTML = `
+          <div class="exercise">
+            <h2>${name || 'Exercise'}</h2>
+            ${reps  != null ? `<p>Reps: ${reps}</p>` : ''}
+            ${duration ? `<p>Duration: ${duration}</p>` : ''}
+          </div>`;
+      }
+
+      // You can also handle other message types (e.g. pause/start) here
+    });
+
+    // 5) Start the receiver: opens the WebSocket & binds handlers
     context.start();
   </script>
 </body>
