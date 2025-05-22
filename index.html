@@ -1,113 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Workout Custom Receiver</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    html, body {
-      height: 100%; margin: 0; font-family: sans-serif;
-      background: #1a1a1a; color: #fff; display: flex;
-      flex-direction: column; align-items: center; justify-content: center;
-      text-align: center;
-    }
-    #screen-title { font-size: 4vw; margin: 0.6em 0; }
-    #details { font-size: 2.2vw; opacity: 0.8; margin: 0.3em 0; }
-    #state { font-size: 2.5vw; margin: 0.4em 0; }
-    #barWrap { width: 60vw; height: 1.2vw; background: #444;
-      border-radius: 1vw; overflow: hidden; margin-top: 2em; }
-    #bar { width: 0%; height: 100%; background: #03DAC6;
-      transition: width 0.3s linear; }
-  </style>
-  <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
-</head>
-<body>
-  <div id="screen-title">Waiting for workout…</div>
-  <div id="details"></div>
-  <div id="state"></div>
-  <div id="barWrap"><div id="bar"></div></div>
-
+  <meta charset="utf-8">
+  <title>Cast Test</title>
   <script>
-    (function() {
-      if (!window.cast || !cast.framework) {
-        console.error('Custom Receiver: cast.framework not available.');
+    window.__onGCastApiAvailable = function(available) {
+      if (!available) {
+        console.warn('Cast API not available');
         return;
       }
-
-      const CHANNEL = 'urn:x-cast:workout.channel';
-      const context = cast.framework.CastReceiverContext.getInstance();
-      context.setLoggerLevel(cast.framework.LoggerLevel.INFO);
-
-      const bus = context.getCastMessageBus(
-        CHANNEL,
-        cast.framework.MessageType.JSON
-      );
-
-      function setTitle(text) {
-        document.getElementById('screen-title').textContent = text;
-      }
-      function setDetails(text) {
-        document.getElementById('details').textContent = text;
-      }
-      function setState(text) {
-        document.getElementById('state').textContent = text;
-      }
-      function setProgress(pct) {
-        document.getElementById('bar').style.width = pct + '%';
-      }
-
-      let duration = 0, startTime = 0, timerId = null;
-      function startLocalTimer() {
-        clearInterval(timerId);
-        if (duration <= 0) return;
-        startTime = Date.now();
-        timerId = setInterval(() => {
-          const pct = Math.min(100, ((Date.now() - startTime) / 1000) / duration * 100);
-          setProgress(pct);
-          if (pct >= 100) clearInterval(timerId);
-        }, 200);
-      }
-
-      bus.addEventListener(cast.framework.events.EventType.MESSAGE, event => {
-        const data = event.data;
-        console.log('[Receiver] Received message:', data);
-        switch (data.type) {
-          case 'exercise':
-            const ex = data.payload || {};
-            setTitle(ex.name || 'Exercise');
-            setDetails((ex.reps ? ex.reps + ' reps ' : '') + (ex.duration ? ex.duration + ' s' : ''));
-            setState('Ready');
-            duration = ex.duration || 0;
-            setProgress(0);
-            break;
-          case 'state':
-            if (data.payload === 'start') {
-              setState('Running…');
-              startLocalTimer();
-            } else if (data.payload === 'pause') {
-              setState('Paused');
-              clearInterval(timerId);
-            } else if (data.payload === 'stop') {
-              setState('Stopped');
-              clearInterval(timerId);
-              setProgress(0);
-            }
-            break;
-          case 'progress':
-            setProgress(data.pct || 0);
-            break;
-          case 'screen':
-            // Show which screen this is
-            setTitle('Screen ' + data.screen);
-            break;
-          default:
-            console.warn('[Receiver] Unknown message type:', data.type);
-        }
+      // initialize CastContext with your new App ID
+      cast.framework.CastContext.getInstance().setOptions({
+        receiverApplicationId: '0656D6B9',
+        autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
       });
+      console.log('CastContext initialized');
+    };
+  </script>
+  <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+</head>
+<body>
+  <h1>Chromecast Session Test</h1>
+  <button id="castBtn">Link TV</button>
 
-      context.start();
-      console.log('Custom Receiver started.');
-    })();
+  <script>
+    document.getElementById('castBtn').addEventListener('click', () => {
+      cast.framework.CastContext.getInstance()
+        .requestSession()
+        .then(session => {
+          console.log('✅ Session established!', session);
+          alert('✅ Connected to Chromecast: ' + session.getCastDevice().friendlyName);
+        })
+        .catch(err => {
+          console.error('❌ requestSession failed', err);
+          alert('requestSession failed: ' + err.code || err);
+        });
+    });
   </script>
 </body>
 </html>
