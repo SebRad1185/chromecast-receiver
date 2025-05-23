@@ -15,7 +15,7 @@
       margin: 20px 0;
     }
     #timer {
-      font-size: 2em;
+      font-size: 2.5em;
       margin: 20px 0;
     }
     #progress {
@@ -37,25 +37,24 @@
 </head>
 <body>
   <h1 id="screen-title">Waiting for workout...</h1>
-  <div id="workout-content">
-    <!-- Dynamic content goes here -->
-  </div>
+  <div id="workout-content"></div>
 
   <script>
     const context = cast.framework.CastReceiverContext.getInstance();
     const channel = 'urn:x-cast:workout.channel';
 
-    const contentDiv = document.getElementById('workout-content');
-    const titleDiv = document.getElementById('screen-title');
+    let currentDuration = 0; // in seconds
 
     context.addCustomMessageListener(channel, (event) => {
       const data = event.data;
 
       if (data.type === 'exercise') {
         const { name, duration } = data.payload;
-        titleDiv.textContent = name;
-        contentDiv.innerHTML = `
-          <div id="timer">Duration: ${duration}s</div>
+        currentDuration = duration;
+
+        document.getElementById('screen-title').textContent = name;
+        document.getElementById('workout-content').innerHTML = `
+          <div id="timer">${formatTime(duration)}</div>
           <div id="progress">
             <div id="progress-bar"></div>
           </div>
@@ -64,21 +63,32 @@
 
       if (data.type === 'progress') {
         const pct = data.pct;
-        const progressBar = document.getElementById('progress-bar');
-        if (progressBar) {
-          progressBar.style.width = pct + '%';
+        const bar = document.getElementById('progress-bar');
+        const timer = document.getElementById('timer');
+
+        if (bar) bar.style.width = `${pct}%`;
+        if (timer && currentDuration > 0) {
+          const remaining = Math.max(0, Math.round(currentDuration * (1 - pct / 100)));
+          timer.textContent = formatTime(remaining);
         }
       }
 
       if (data.type === 'state' && data.payload === 'stop') {
-        contentDiv.innerHTML += `<p style="margin-top:20px;">Workout Finished!</p>`;
+        document.getElementById('workout-content').innerHTML += `
+          <p style="margin-top:20px;">Workout Finished!</p>`;
       }
 
       if (data.type === 'clear') {
-        titleDiv.textContent = 'Waiting for workout...';
-        contentDiv.innerHTML = '';
+        document.getElementById('screen-title').textContent = 'Waiting for workout...';
+        document.getElementById('workout-content').innerHTML = '';
       }
     });
+
+    function formatTime(sec) {
+      const mins = Math.floor(sec / 60);
+      const secs = sec % 60;
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
 
     context.start();
   </script>
