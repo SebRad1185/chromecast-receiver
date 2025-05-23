@@ -43,7 +43,9 @@
     const context = cast.framework.CastReceiverContext.getInstance();
     const channel = 'urn:x-cast:workout.channel';
 
+    
     let currentDuration = 0; // in seconds
+    let isPaused = false;
 
     context.addCustomMessageListener(channel, (event) => {
       const data = event.data;
@@ -51,6 +53,7 @@
       if (data.type === 'exercise') {
         const { name, duration } = data.payload;
         currentDuration = duration;
+        isPaused = false;
 
         document.getElementById('screen-title').textContent = name;
         document.getElementById('workout-content').innerHTML = `
@@ -61,7 +64,7 @@
         `;
       }
 
-      if (data.type === 'progress') {
+      if (data.type === 'progress' && !isPaused) {
         const pct = data.pct;
         const bar = document.getElementById('progress-bar');
         const timer = document.getElementById('timer');
@@ -73,9 +76,15 @@
         }
       }
 
-      if (data.type === 'state' && data.payload === 'stop') {
-        document.getElementById('workout-content').innerHTML += `
-          <p style="margin-top:20px;">Workout Finished!</p>`;
+      if (data.type === 'state') {
+        if (data.payload === 'stop') {
+          document.getElementById('workout-content').innerHTML += `
+            <p style="margin-top:20px;">Workout Finished!</p>`;
+        } else if (data.payload === 'pause') {
+          isPaused = true;
+        } else if (data.payload === 'start') {
+          isPaused = false;
+        }
       }
 
       if (data.type === 'clear') {
@@ -83,14 +92,7 @@
         document.getElementById('workout-content').innerHTML = '';
       }
     });
-
-    function formatTime(sec) {
-      const mins = Math.floor(sec / 60);
-      const secs = sec % 60;
-      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-
-    context.start();
+context.start();
   </script>
 </body>
 </html>
