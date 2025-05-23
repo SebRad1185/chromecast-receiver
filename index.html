@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <title>Workout Receiver</title>
+  <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js" type="module"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js" type="module"></script>
   <style>
     body {
       font-family: sans-serif;
@@ -33,62 +36,77 @@
       transition: width 0.3s ease;
     }
   </style>
-  <script type="text/javascript" src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
 </head>
 <body>
   <h1 id="screen-title">Waiting for workout...</h1>
   <div id="workout-content"></div>
 
-  <script>
-    const context = cast.framework.CastReceiverContext.getInstance();
-    const channel = 'urn:x-cast:workout.channel';
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js';
+    import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js';
 
-    let currentDuration = 0; // in seconds
+    const firebaseConfig = {
+      apiKey: "AIzaSyA6eHJKlSB_3WsAnRZTe8AozwfxTsnDq08",
+      authDomain: "workout-bac20.firebaseapp.com",
+      databaseURL: "https://workout-bac20-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "workout-bac20",
+      storageBucket: "workout-bac20.appspot.com",
+      messagingSenderId: "194637770015",
+      appId: "1:194637770015:web:06608b0760b0276b38d42a"
+    };
 
-    context.addCustomMessageListener(channel, (event) => {
-      const data = event.data;
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-      if (data.type === 'exercise') {
-        const { name, duration } = data.payload;
-        currentDuration = duration;
-
-        document.getElementById('screen-title').textContent = name;
-        document.getElementById('workout-content').innerHTML = `
-          <div id="timer">${formatTime(duration)}</div>
-          <div id="progress">
-            <div id="progress-bar"></div>
-          </div>
-        `;
-      }
-
-      if (data.type === 'progress') {
-        const pct = data.pct;
-        const bar = document.getElementById('progress-bar');
-        const timer = document.getElementById('timer');
-
-        if (bar) bar.style.width = `${pct}%`;
-        if (timer && currentDuration > 0) {
-          const remaining = Math.max(0, Math.round(currentDuration * (1 - pct / 100)));
-          timer.textContent = formatTime(remaining);
-        }
-      }
-
-      if (data.type === 'state' && data.payload === 'stop') {
-        document.getElementById('workout-content').innerHTML += `
-          <p style="margin-top:20px;">Workout Finished!</p>`;
-      }
-
-      if (data.type === 'clear') {
-        document.getElementById('screen-title').textContent = 'Waiting for workout...';
-        document.getElementById('workout-content').innerHTML = '';
-      }
-    });
+    const screenTitle = document.getElementById('screen-title');
+    const workoutContent = document.getElementById('workout-content');
 
     function formatTime(sec) {
       const mins = Math.floor(sec / 60);
       const secs = sec % 60;
       return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
+
+    // Cast receiver setup
+    const context = cast.framework.CastReceiverContext.getInstance();
+    const CHANNEL = 'urn:x-cast:workout.channel';
+
+    let screenNumber = null;
+    let duration = 0;
+
+    function listenToFirebase(screenNum) {
+      const path = `workouts/current/screen-${screenNum}`;
+      const workoutRef = ref(db, path);
+
+      onValue(workoutRef, (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
+
+        if (data.type === 'clear') {
+          screenTitle.textContent = 'Waiting for workout...';
+          workoutContent.innerHTML = '';
+          return;
+        }
+
+        if (data.type === 'exercise_data' && data.exercises?.length > 0) {
+          const exercise = data.exercises[0];
+          screenTitle.textContent = exercise.name;
+          duration = exercise.duration;
+          workoutContent.innerHTML = `
+            <div id="timer">${formatTime(duration)}</div>
+            <div id="progress"><div id="progress-bar"></div></div>
+          `;
+        }
+      });
+    }
+
+    context.addCustomMessageListener(CHANNEL, event => {
+      const data = event.data;
+      if (data.type === 'screen' && data.screen) {
+        screenNumber = data.screen;
+        listenToFirebase(screenNumber);
+      }
+    });
 
     context.start();
   </script>
