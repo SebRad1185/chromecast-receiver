@@ -1,60 +1,86 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <title>Workout Sender</title>
-  <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=0"></script>
+  <title>Workout Receiver</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    button { margin-right: 10px; padding: 10px 20px; }
+    body {
+      font-family: sans-serif;
+      background: #1a1a1a;
+      color: #fff;
+      text-align: center;
+      padding: 30px;
+    }
+    h1, h2 {
+      margin: 20px 0;
+    }
+    #timer {
+      font-size: 2em;
+      margin: 20px 0;
+    }
+    #progress {
+      background: #555;
+      width: 100%;
+      height: 20px;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 20px;
+    }
+    #progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #2ecc71;
+      transition: width 0.3s ease;
+    }
   </style>
+  <script type="text/javascript" src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
 </head>
 <body>
-  <h1>Workout Controller</h1>
-  <div>
-    <button id="link-1">Link TV 1</button>
-    <button id="link-2">Link TV 2</button>
-    <button id="link-3">Link TV 3</button>
-    <button id="link-4">Link TV 4</button>
-  </div>
-  <div style="margin-top:20px;">
-    <button id="start-btn">Start</button>
-    <button id="pause-btn">Pause</button>
-    <button id="reset-btn">Reset</button>
+  <h1 id="screen-title">Waiting for workout...</h1>
+  <div id="workout-content">
+    <!-- Dynamic content goes here -->
   </div>
 
- <script>
-  const context = cast.framework.CastReceiverContext.getInstance();
-  const channel = 'urn:x-cast:workout.channel';
+  <script>
+    const context = cast.framework.CastReceiverContext.getInstance();
+    const channel = 'urn:x-cast:workout.channel';
 
-  const playerManager = context.getPlayerManager();
-  const element = document.getElementById('workout-content');
-  
-  context.addCustomMessageListener(channel, event => {
-    const data = event.data;
+    const contentDiv = document.getElementById('workout-content');
+    const titleDiv = document.getElementById('screen-title');
 
-    if (data.type === 'exercise') {
-      element.innerHTML = `
-        <h2>${data.payload.name}</h2>
-        <div id="timer">Duration: ${data.payload.duration}s</div>
-        <div id="progress" style="background:#555;width:100%;height:20px;border-radius:10px;overflow:hidden;">
-          <div id="progress-bar" style="height:100%;width:0%;background:#4caf50;"></div>
-        </div>
-      `;
-    }
+    context.addCustomMessageListener(channel, (event) => {
+      const data = event.data;
 
-    if (data.type === 'progress') {
-      const bar = document.getElementById('progress-bar');
-      if (bar) bar.style.width = `${data.pct}%`;
-    }
+      if (data.type === 'exercise') {
+        const { name, duration } = data.payload;
+        titleDiv.textContent = name;
+        contentDiv.innerHTML = `
+          <div id="timer">Duration: ${duration}s</div>
+          <div id="progress">
+            <div id="progress-bar"></div>
+          </div>
+        `;
+      }
 
-    if (data.type === 'state' && data.payload === 'stop') {
-      element.innerHTML += '<p>Finished!</p>';
-    }
-  });
+      if (data.type === 'progress') {
+        const pct = data.pct;
+        const progressBar = document.getElementById('progress-bar');
+        if (progressBar) {
+          progressBar.style.width = pct + '%';
+        }
+      }
 
-  context.start();
-</script>
+      if (data.type === 'state' && data.payload === 'stop') {
+        contentDiv.innerHTML += `<p style="margin-top:20px;">Workout Finished!</p>`;
+      }
 
+      if (data.type === 'clear') {
+        titleDiv.textContent = 'Waiting for workout...';
+        contentDiv.innerHTML = '';
+      }
+    });
+
+    context.start();
+  </script>
 </body>
 </html>
