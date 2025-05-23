@@ -2,113 +2,48 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Workout Receiver</title>
-  <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js" type="module"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js" type="module"></script>
+  <title>Receiver Launcher</title>
   <style>
     body {
       font-family: sans-serif;
-      background: #1a1a1a;
-      color: #fff;
-      text-align: center;
       padding: 30px;
+      background: #f5f5f5;
+      color: #333;
+      text-align: center;
     }
-    h1, h2 {
-      margin: 20px 0;
+    button {
+      font-size: 1em;
+      padding: 12px 24px;
+      margin: 10px;
+      border: none;
+      border-radius: 6px;
+      background: #3498db;
+      color: white;
+      cursor: pointer;
     }
-    #timer {
-      font-size: 2.5em;
-      margin: 20px 0;
-    }
-    #progress {
-      background: #555;
-      width: 100%;
-      height: 20px;
-      border-radius: 10px;
-      overflow: hidden;
-      margin-top: 20px;
-    }
-    #progress-bar {
-      height: 100%;
-      width: 0%;
-      background: #2ecc71;
-      transition: width 0.3s ease;
+    button:hover {
+      background: #2980b9;
     }
   </style>
 </head>
 <body>
-  <h1 id="screen-title">Waiting for workout...</h1>
-  <div id="workout-content"></div>
+  <h1>Launch Chromecast Receivers</h1>
+  <p>Click each button to open a new tab for each Chromecast TV.</p>
 
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js';
-    import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js';
+  <button onclick="openReceiver(1)">Open TV 1</button>
+  <button onclick="openReceiver(2)">Open TV 2</button>
+  <button onclick="openReceiver(3)">Open TV 3</button>
+  <button onclick="openReceiver(4)">Open TV 4</button>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyA6eHJKlSB_3WsAnRZTe8AozwfxTsnDq08",
-      authDomain: "workout-bac20.firebaseapp.com",
-      databaseURL: "https://workout-bac20-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "workout-bac20",
-      storageBucket: "workout-bac20.appspot.com",
-      messagingSenderId: "194637770015",
-      appId: "1:194637770015:web:06608b0760b0276b38d42a"
-    };
+  <script>
+    const RECEIVER_URL = 'https://your-username.github.io/receiver.html'; // CHANGE THIS
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
-    const screenTitle = document.getElementById('screen-title');
-    const workoutContent = document.getElementById('workout-content');
-
-    function formatTime(sec) {
-      const mins = Math.floor(sec / 60);
-      const secs = sec % 60;
-      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    }
-
-    // Cast receiver setup
-    const context = cast.framework.CastReceiverContext.getInstance();
-    const CHANNEL = 'urn:x-cast:workout.channel';
-
-    let screenNumber = null;
-    let duration = 0;
-
-    function listenToFirebase(screenNum) {
-      const path = `workouts/current/screen-${screenNum}`;
-      const workoutRef = ref(db, path);
-
-      onValue(workoutRef, (snapshot) => {
-        const data = snapshot.val();
-        if (!data) return;
-
-        if (data.type === 'clear') {
-          screenTitle.textContent = 'Waiting for workout...';
-          workoutContent.innerHTML = '';
-          return;
-        }
-
-        if (data.type === 'exercise_data' && data.exercises?.length > 0) {
-          const exercise = data.exercises[0];
-          screenTitle.textContent = exercise.name;
-          duration = exercise.duration;
-          workoutContent.innerHTML = `
-            <div id="timer">${formatTime(duration)}</div>
-            <div id="progress"><div id="progress-bar"></div></div>
-          `;
-        }
-      });
-    }
-
-    context.addCustomMessageListener(CHANNEL, event => {
-      const data = event.data;
-      if (data.type === 'screen' && data.screen) {
-        screenNumber = data.screen;
-        listenToFirebase(screenNumber);
+    function openReceiver(screenNum) {
+      const tab = window.open(`${RECEIVER_URL}?screen=${screenNum}`, `_receiver${screenNum}`);
+      if (!tab) {
+        alert('Pop-up blocked! Please allow pop-ups for this site.');
       }
-    });
-
-    context.start();
+    }
   </script>
 </body>
 </html>
