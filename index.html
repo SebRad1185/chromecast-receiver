@@ -1,107 +1,66 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Workout Receiver</title>
+  <title>Workout Sender</title>
+  <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=0"></script>
   <style>
-    body {
-      font-family: sans-serif;
-      background: #111;
-      color: #eee;
-      text-align: center;
-      padding: 20px;
-    }
-    #screen-title {
-      margin: 20px 0;
-      font-size: 2em;
-    }
-    #workout-content {
-      margin: 20px auto;
-      max-width: 600px;
-      font-size: 1.2em;
-    }
-    .exercise {
-      margin-bottom: 16px;
-    }
-    .exercise h2 {
-      margin: 0 0 8px;
-      font-size: 1.5em;
-    }
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    button { margin-right: 10px; padding: 10px 20px; }
   </style>
-
-  <!-- 1) CAF v3 Receiver SDK -->
-  <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
 </head>
 <body>
-  <div id="screen-title">Waiting for workout…</div>
-  <div id="workout-content"></div>
+  <h1>Workout Controller</h1>
+  <div>
+    <button id="link-1">Link TV 1</button>
+    <button id="link-2">Link TV 2</button>
+    <button id="link-3">Link TV 3</button>
+    <button id="link-4">Link TV 4</button>
+  </div>
+  <div style="margin-top:20px;">
+    <button id="start-btn">Start</button>
+    <button id="pause-btn">Pause</button>
+    <button id="reset-btn">Reset</button>
+  </div>
 
   <script>
-    // 2) Get the CAF ReceiverContext singleton
-    const context = cast.framework.CastReceiverContext.getInstance();
-context.setLoggerLevel(cast.framework.LoggerLevel.DEBUG);
-
-    // 3) (Optional) More verbose logs in chrome://inspect → Remote Target
-
-    // 4) Listen for custom messages on your namespace
+    const APP_ID = '0656D6B9';
     const NAMESPACE = 'urn:x-cast:workout.channel';
-    context.addCustomMessageListener(NAMESPACE, (event) => {
-      const msg = event.data;
-      console.log('⚡ Receiver got message:', msg);
+    const sessions = {};
 
-      // If sender says to change the screen
-      if (msg.type === 'screen' && msg.screen) {
-        document.getElementById('screen-title').textContent = msg.screen;
-        document.getElementById('workout-content').innerHTML = '';
-      }
+    window.__onGCastApiAvailable = function(isAvailable) {
+      if (!isAvailable) return;
+      const request = new chrome.cast.SessionRequest(APP_ID);
+      const config = new chrome.cast.ApiConfig(request, 
+        session => console.log('session listener', session),
+        availability => console.log('receiver availability', availability));
+      chrome.cast.initialize(config, () => console.log('Initialized'), console.error);
+    };
 
-      // If sender sends an exercise payload
-      else if (msg.type === 'exercise' && msg.payload) {
-        const { name, reps, duration } = msg.payload;
-        document.getElementById('workout-content').innerHTML = `
-          <div class="exercise">
-            <h2>${name || 'Exercise'}</h2>
-            ${reps  != null ? `<p>Reps: ${reps}</p>` : ''}
-            ${duration ? `<p>Duration: ${duration}</p>` : ''}
-          </div>`;
-      }
-
-      // Handle command messages like start, pause, reset
-      else if (msg.type === 'command') {
-        switch (msg.action) {
-          case 'start':
-            startWorkout();
-            break;
-          case 'pause':
-            pauseWorkout();
-            break;
-          case 'reset':
-            resetWorkout();
-            break;
-        }
-      }
-    });
-
-    // 5) Start the receiver: opens the WebSocket & binds handlers
-    
-    function startWorkout() {
-      const title = document.getElementById('screen-title');
-      title.textContent = '[▶] Workout Started';
-      // You could also trigger a countdown or audio here
+    function linkTV(n) {
+      chrome.cast.requestSession(
+        session => {
+          sessions[n] = session;
+          console.log('Linked screen', n);
+        },
+        err => console.error('Link error', err)
+      );
     }
 
-    function pauseWorkout() {
-      const title = document.getElementById('screen-title');
-      title.textContent = '[⏸] Workout Paused';
+    for (let i = 1; i <= 4; i++) {
+      document.getElementById('link-' + i).onclick = () => linkTV(i);
     }
 
-    function resetWorkout() {
-      const title = document.getElementById('screen-title');
-      title.textContent = 'Waiting for workout…';
-      document.getElementById('workout-content').innerHTML = '';
+    function broadcast(msg) {
+      Object.keys(sessions).forEach(k => {
+        sessions[k].sendMessage(NAMESPACE, msg)
+          .catch(console.error);
+      });
     }
 
-    context.start();
+    document.getElementById('start-btn').onclick = () => broadcast({ type:'command', action:'start' });
+    document.getElementById('pause-btn').onclick  = () => broadcast({ type:'command', action:'pause' });
+    document.getElementById('reset-btn').onclick  = () => broadcast({ type:'command', action:'reset' });
   </script>
 </body>
 </html>
