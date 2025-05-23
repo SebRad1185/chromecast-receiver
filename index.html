@@ -39,9 +39,9 @@
   <script>
     // 2) Get the CAF ReceiverContext singleton
     const context = cast.framework.CastReceiverContext.getInstance();
+context.setLoggerLevel(cast.framework.LoggerLevel.DEBUG);
 
     // 3) (Optional) More verbose logs in chrome://inspect → Remote Target
-    context.setLoggerLevelValue(cast.framework.LoggerLevel.DEBUG);
 
     // 4) Listen for custom messages on your namespace
     const NAMESPACE = 'urn:x-cast:workout.channel';
