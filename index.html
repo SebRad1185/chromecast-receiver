@@ -7,99 +7,71 @@
     body {
       font-family: sans-serif;
       background: #111;
-      color: #eee;
+      color: white;
       text-align: center;
-      padding: 20px;
+      padding: 40px;
     }
-    #screen-title {
-      margin: 20px 0;
-      font-size: 2em;
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
     }
-    #workout-content {
-      margin: 20px auto;
-      max-width: 600px;
-      font-size: 1.2em;
-    }
-    .exercise {
-      margin-bottom: 16px;
-    }
-    .exercise h2 {
-      margin: 0 0 8px;
+    #duration {
       font-size: 1.5em;
+      margin: 20px 0;
+    }
+    #progressBar {
+      height: 20px;
+      background: #444;
+      border-radius: 10px;
+      overflow: hidden;
+      width: 80%;
+      margin: 20px auto;
+    }
+    #progressFill {
+      height: 100%;
+      width: 0%;
+      background: #2ecc71;
+      transition: width 0.2s ease;
     }
   </style>
-
-  <!-- 1) CAF v3 Receiver SDK -->
   <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
 </head>
 <body>
-  <div id="screen-title">Waiting for workout…</div>
-  <div id="workout-content"></div>
+  <h1 id="exerciseName">Waiting for workout…</h1>
+  <div id="duration">0s</div>
+  <div id="progressBar"><div id="progressFill"></div></div>
 
   <script>
-    // 2) Get the CAF ReceiverContext singleton
     const context = cast.framework.CastReceiverContext.getInstance();
-context.setLoggerLevel(cast.framework.LoggerLevel.DEBUG);
+    const channel = context.getCastMessageBus('urn:x-cast:workout.channel');
 
-    // 3) (Optional) More verbose logs in chrome://inspect → Remote Target
+    let totalDuration = 0;
 
-    // 4) Listen for custom messages on your namespace
-    const NAMESPACE = 'urn:x-cast:workout.channel';
-    context.addCustomMessageListener(NAMESPACE, (event) => {
-      const msg = event.data;
-      console.log('⚡ Receiver got message:', msg);
+    channel.onMessage = (event) => {
+      const data = event.data;
 
-      // If sender says to change the screen
-      if (msg.type === 'screen' && msg.screen) {
-        document.getElementById('screen-title').textContent = msg.screen;
-        document.getElementById('workout-content').innerHTML = '';
+      if (data.type === 'exercise') {
+        document.getElementById('exerciseName').textContent = data.payload.name;
+        document.getElementById('duration').textContent = data.payload.duration + 's';
+        document.getElementById('progressFill').style.width = '0%';
+        totalDuration = data.payload.duration;
       }
 
-      // If sender sends an exercise payload
-      else if (msg.type === 'exercise' && msg.payload) {
-        const { name, reps, duration } = msg.payload;
-        document.getElementById('workout-content').innerHTML = `
-          <div class="exercise">
-            <h2>${name || 'Exercise'}</h2>
-            ${reps  != null ? `<p>Reps: ${reps}</p>` : ''}
-            ${duration ? `<p>Duration: ${duration}</p>` : ''}
-          </div>`;
-      }
-
-      // Handle command messages like start, pause, reset
-      else if (msg.type === 'command') {
-        switch (msg.action) {
-          case 'start':
-            startWorkout();
-            break;
-          case 'pause':
-            pauseWorkout();
-            break;
-          case 'reset':
-            resetWorkout();
-            break;
+      if (data.type === 'progress') {
+        if (data.pct !== undefined) {
+          document.getElementById('progressFill').style.width = data.pct + '%';
+        }
+        if (data.remaining !== undefined) {
+          document.getElementById('duration').textContent = data.remaining + 's';
         }
       }
-    });
 
-    // 5) Start the receiver: opens the WebSocket & binds handlers
-    
-    function startWorkout() {
-      const title = document.getElementById('screen-title');
-      title.textContent = '[▶] Workout Started';
-      // You could also trigger a countdown or audio here
-    }
-
-    function pauseWorkout() {
-      const title = document.getElementById('screen-title');
-      title.textContent = '[⏸] Workout Paused';
-    }
-
-    function resetWorkout() {
-      const title = document.getElementById('screen-title');
-      title.textContent = 'Waiting for workout…';
-      document.getElementById('workout-content').innerHTML = '';
-    }
+      if (data.type === 'state' && data.payload === 'stop') {
+        document.getElementById('exerciseName').textContent = 'Workout Complete!';
+        document.getElementById('duration').textContent = '';
+        document.getElementById('progressFill').style.width = '100%';
+      }
+    };
 
     context.start();
   </script>
