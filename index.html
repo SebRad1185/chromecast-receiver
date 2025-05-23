@@ -66,10 +66,41 @@ context.setLoggerLevel(cast.framework.LoggerLevel.DEBUG);
           </div>`;
       }
 
-      // You can also handle other message types (e.g. pause/start) here
+      // Handle command messages like start, pause, reset
+      else if (msg.type === 'command') {
+        switch (msg.action) {
+          case 'start':
+            startWorkout();
+            break;
+          case 'pause':
+            pauseWorkout();
+            break;
+          case 'reset':
+            resetWorkout();
+            break;
+        }
+      }
     });
 
     // 5) Start the receiver: opens the WebSocket & binds handlers
+    
+    function startWorkout() {
+      const title = document.getElementById('screen-title');
+      title.textContent = '[▶] Workout Started';
+      // You could also trigger a countdown or audio here
+    }
+
+    function pauseWorkout() {
+      const title = document.getElementById('screen-title');
+      title.textContent = '[⏸] Workout Paused';
+    }
+
+    function resetWorkout() {
+      const title = document.getElementById('screen-title');
+      title.textContent = 'Waiting for workout…';
+      document.getElementById('workout-content').innerHTML = '';
+    }
+
     context.start();
   </script>
 </body>
