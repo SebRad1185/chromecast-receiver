@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -33,7 +34,11 @@
       transition: width 0.3s ease;
     }
   </style>
-  
+</head>
+<body>
+  <h1 id="screen-title">Waiting for workout...</h1>
+  <div id="workout-content"></div>
+
 <script>
   const context = cast.framework.CastReceiverContext.getInstance();
   const channel = 'urn:x-cast:workout.channel';
@@ -41,9 +46,20 @@
   let currentDuration = 0; // in seconds
   let paused = false;
   let currentPct = 0;
+  let screenId = null; // This Chromecast’s screen number (1–4)
 
   context.addCustomMessageListener(channel, (event) => {
     const data = event.data;
+
+    if (data.type === 'screen') {
+      screenId = data.screen;
+      console.log('Receiver set to screen ID:', screenId);
+      return;
+    }
+
+    if (data.screen && data.screen !== screenId) {
+      return; // Ignore messages not for this screen
+    }
 
     if (data.type === 'exercise') {
       const { name, duration } = data.payload;
@@ -96,7 +112,7 @@
   function formatTime(sec) {
     const mins = Math.floor(sec / 60);
     const secs = sec % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return mins.toString().padStart(2, '0') + ':' + secs.toString().padStart(2, '0');
   }
 
   context.start();
